@@ -2,27 +2,34 @@ import os
 
 APP_SETTINGS = None
 
-ADMINS = (
-    ('img', 'img@it-solution.ru'),
-)
+ADMINS = (('img', 'img@it-solution.ru'),)
 
-BASE_DOMAIN = ''  # заполним позже, когда будет домен
+BASE_DOMAIN = ''
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_PATH = os.path.dirname(__file__).replace('\\','/')
 
-# В деве можно оставить любой ключ, в проде вынести в ENV
-SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'dev-only-change-me')
 
-DEBUG = True  # как в is_demo-подходе, для старта включим
+SECRET_KEY = 'br_)_gosz)tuok5m$31*b42bu6mj##vaoa9tuhr66^g$-sotye'
+
+DEBUG = True
 ALLOWED_HOSTS = ['*']
+
+CSRF_TRUSTED_ORIGINS = [
+    'https://c5b354d95473.ngrok-free.app',
+    'https://*.bitrix24.ru',
+]
+SESSION_COOKIE_SAMESITE = 'None'
+CSRF_COOKIE_SAMESITE = 'None'
+SESSION_COOKIE_SECURE = True  # True, если будешь на https
+CSRF_COOKIE_SECURE = True
 
 INSTALLED_APPS = [
     'django.contrib.admin','django.contrib.auth','django.contrib.contenttypes',
     'django.contrib.sessions','django.contrib.messages','django.contrib.staticfiles',
-    # 'integration_utils.bitrix24',              # включим после добавления сабмодуля
-    # 'integration_utils.its_utils.app_gitpull', # включим после добавления сабмодуля
 
-    'products_qr',
+    'integration_utils.bitrix24',
+    'integration_utils.its_utils.app_gitpull',
+    'products_qr',   # наше приложение
 ]
 
 MIDDLEWARE = [
@@ -32,7 +39,7 @@ MIDDLEWARE = [
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
-    # 'django.middleware.clickjacking.XFrameOptionsMiddleware',  # как в is_demo, не используем
+    # XFrameOptionsMiddleware не используем
 ]
 
 ROOT_URLCONF = 'urls'
@@ -53,18 +60,17 @@ TEMPLATES = [{
 
 WSGI_APPLICATION = 'wsgi.application'
 
-# PostgreSQL через psycopg (современный драйвер). Вы установили БД b24_qr.
+# БД — твоя локальная b24_qr; современное имя бэкенда (подходит и для psycopg2, и для psycopg v3)
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',  # современное имя бэкенда
+        'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'b24_qr',
         'USER': 'postgres',
-        'PASSWORD': 'Vanek2004!',   # набери заново
-        'HOST': '127.0.0.1',        # предпочтительнее, чем 'localhost' на Windows
+        'PASSWORD': 'Vanek2004!',
+        'HOST': '127.0.0.1',
         'PORT': '5432',
-    }
+    },
 }
-
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME':'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
@@ -92,34 +98,26 @@ STATICFILES_FINDERS = (
 )
 STATICFILES_DIRS = [os.path.join(BASE_DIR, 'staticfiles')]
 
-# Логи (как в is_demo) — заглушка, чтобы не падало, если integration_utils ещё не подключён
 try:
-    from integration_utils.its_utils.mute_logger import MuteLogger  # type: ignore
+    from integration_utils.its_utils.mute_logger import MuteLogger
     ilogger = MuteLogger()
 except Exception:
-    ilogger = None  # подключим позже
+    ilogger = None
 
-# local settings (как в is_demo)
 try:
-    from local_settings import *  # noqa
+    from local_settings import *  # здесь зададим APP_SETTINGS и B24_WEBHOOK
 except ImportError:
     from warnings import warn
     warn('create local_settings.py')
 
-# APP_SETTINGS: подхватим из local_settings, иначе простая заглушка до подключения integration_utils
 if not APP_SETTINGS:
-    class _LocalSettingsFallback:
-        app_domain = ''
-        app_name = 'b24_product_qr'
-        salt = ''
-        secret_key = ''
-        application_index_path = '/'
-    APP_SETTINGS = _LocalSettingsFallback()
+    from integration_utils.bitrix24.local_settings_class import LocalSettingsClass
+    APP_SETTINGS = LocalSettingsClass(
+        app_domain='',                 # локально пусто
+        app_name='b24_product_qr',     # наше имя
+        salt='dev_salt',               # любые dev-значения
+        secret_key='dev_secret',
+        application_index_path='/',
+    )
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-# Для работы в iframe Битрикс24 (ваш чек-лист)
-SESSION_COOKIE_SAMESITE = 'None'
-CSRF_COOKIE_SAMESITE = 'None'
-SESSION_COOKIE_SECURE = False  # включим True, когда будет https
-CSRF_COOKIE_SECURE = False
