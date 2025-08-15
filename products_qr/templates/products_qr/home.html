@@ -1,48 +1,41 @@
 <h1>Товары и QR</h1>
 
-<form id="product-form" method="post">
+<form method="post" style="margin-bottom:1rem">
   {% csrf_token %}
   <label>ID товара:</label>
   <input name="product_id" inputmode="numeric" pattern="\d*" required>
-  <button type="submit">Продолжить</button>
+  <button type="submit">Сгенерировать секретную ссылку</button>
 </form>
 
-<div id="out" style="margin-top:1rem; white-space:pre-wrap;"></div>
+{% if error %}
+  <p style="color:#a00">{{ error }}</p>
+{% endif %}
 
-<script>
-  // инициализация SDK внутри iframe
-  if (window.BX24) {
-    BX24.init(function(){ /* готово */ });
-  }
+{% if public_url %}
+  <p>Готово! Публичная ссылка:
+     <a href="{{ public_url }}" target="_blank">{{ public_url }}</a>
+  </p>
 
-  const form = document.getElementById('product-form');
-  const out  = document.getElementById('out');
+  {% if link.qr_image %}
+    <h3>QR-код</h3>
+    <p><img src="{{ link.qr_image.url }}" alt="QR" style="max-width:260px"></p>
+    <p><a href="{{ link.qr_image.url }}" download>Скачать PNG</a></p>
+  {% endif %}
+{% endif %}
 
-  form.addEventListener('submit', function (e) {
-    e.preventDefault();
-
-    const id = (form.product_id.value || '').trim();
-    if (!/^\d+$/.test(id)) {
-      out.textContent = 'Введите числовой ID товара';
-      return;
-    }
-
-    out.textContent = 'Загружаю товар...';
-
-    // читаем товар как есть (CRM-каталог). Если у вас новый каталог — поменяем на catalog.product.get
-    BX24.callMethod('crm.product.get', { id: id }, function (res) {
-      if (res.error()) {
-        out.textContent = 'Ошибка: ' + res.error() + ' — ' + (res.error_description() || '');
-        return;
-      }
-      const p = res.data();
-      if (!p) { out.textContent = 'Товар не найден'; return; }
-
-      // краткий вывод
-      let html = `<p><b>${p.NAME || 'Без названия'}</b> (ID ${p.ID})</p>`;
-      if (p.PRICE) html += `<p>Цена: ${p.PRICE} ${p.CURRENCY_ID || ''}</p>`;
-      html += `<details><summary>Показать все поля</summary><pre>${JSON.stringify(p, null, 2)}</pre></details>`;
-      out.innerHTML = html;
-    });
-  });
-</script>
+<hr>
+<h3>Последние товары</h3>
+<ul>
+  {% for p in last_products %}
+    <li>
+      ID {{ p.id }} — {{ p.name }}
+      <form method="post" style="display:inline">
+        {% csrf_token %}
+        <input type="hidden" name="product_id" value="{{ p.id }}">
+        <button type="submit">Сгенерировать</button>
+      </form>
+    </li>
+  {% empty %}
+    <li>Пока нет товаров. Зайдите в <a href="/admin/products_qr/product/add/" target="_blank">админку</a> и добавьте.</li>
+  {% endfor %}
+</ul>

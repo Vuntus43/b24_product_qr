@@ -1,6 +1,7 @@
 from django.urls import path
-from .views import home
-app_name = 'products_qr'
+from . import views
+
 urlpatterns = [
-    path('', home, name='home')
+    path('', views.home, name='home'),
+    path('p/<uuid:token>/', views.public_product_page, name='public_product_page'),
 ]
